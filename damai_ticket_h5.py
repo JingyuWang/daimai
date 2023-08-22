@@ -4,6 +4,7 @@ from time import sleep, time
 from pickle import dump, load
 from os.path import exists
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -21,8 +22,8 @@ class Concert(object):
         self.num = 0  # 尝试次数
         self.ticket_num = 2  # 购买票数
         self.nick_name = "驴子arthur"  # 用户昵称
-        self.damai_url = "https://www.damai.cn"  # 大麦网官网网址
-        self.target_url = "https://detail.damai.cn/item.htm?id=611160757855"  # 目标购票网址
+        self.damai_url = "https://m.damai.cn/"  # 大麦网官网网址
+        self.target_url = "https://m.damai.cn/shows/item.html?itemId=734070016773"  # 目标购票网址
         self.driver_path = "C:\Program Files\Google\Chrome\Application\chromedriver.exe"  # 浏览器驱动地址
         self.driver = None
 
@@ -36,28 +37,28 @@ class Concert(object):
         except:
             return False
 
-    # 如不存在pkl文件时候，
     # 获取账号的cookie信息
     def get_cookie(self):
+        
+        print(u"开始清理cookie")
+        self.driver.delete_all_cookies()
+        print(u"清理后cookie")
+        print(self.driver.get_cookies())
         self.driver.get(self.damai_url)
         print(u"###请点击登录###")
-        self.driver.find_element_by_class_name('login-user').click()
+        sleep(3)
+        self.driver.find_element_by_class_name('icon-wode_').click()
+        sleep(3)
         while self.driver.title.find('大麦网-全球演出赛事官方购票平台') != -1:  # 等待网页加载完成
             sleep(1)
         print(u"###请扫码登录###")
         while self.driver.title == '大麦登录':  # 等待扫码完成
             sleep(1)
-        dump(self.driver.get_cookies(), open("cookies.pkl", "wb"))
+        cookies = self.driver.get_cookies()
+        print(cookies)
+        dump(cookies, open("cookies.pkl", "wb"))
         print(u"###Cookie保存成功###")
 
-    # 到具体抢购页面, 读取已登录cookie
-    def login(self):
-        print(u'###开始登录###')
-        self.driver.get(self.target_url)
-        WebDriverWait(self.driver, 10, 0.1).until(EC.title_contains('大麦网'))
-        self.set_cookie()
-
-    # 读取本地cookie info
     def set_cookie(self):
         try:
             cookies = load(open("cookies.pkl", "rb"))  # 载入cookie
@@ -76,11 +77,25 @@ class Concert(object):
         except Exception as e:
             print(e)
 
+    def login(self):
+        print(u'###开始登录###')
+        self.driver.get(self.target_url)
+        WebDriverWait(self.driver, 10, 0.1).until(EC.title_contains('大麦网'))
+        self.set_cookie()
 
-    # step 0 初始化
+    # 1
     def enter_concert(self):
         print(u'###打开浏览器，进入大麦网###')
         if not exists('cookies.pkl'):   # 如果不存在cookie.pkl,就获取一下
+            # if use selenium4
+            
+            # service = Service(r"C:\Program Files\Google\Chrome\Application\chromedriver.exe")
+            # options = webdriver.ChromeOptions()
+            # options.add_experimental_option ( "detach", True)
+            # options.add_argument('--disable-blink-features=AutomationControlled')
+            # self.driver = webdriver.Chrome(service=service, options=options)
+            
+            # use selenium3
             self.driver = webdriver.Chrome(executable_path=self.driver_path)
             self.get_cookie()
             print(u'###成功获取Cookie，重启浏览器###')
@@ -97,7 +112,7 @@ class Concert(object):
         capa = DesiredCapabilities.CHROME
         capa["pageLoadStrategy"] = "none"
         self.driver = webdriver.Chrome(executable_path=self.driver_path, options=options, desired_capabilities=capa)
-        # 到具体抢购页面, 包含登录状态
+        # 登录到具体抢购页面
         self.login()
         self.driver.refresh()
         try:
@@ -269,16 +284,15 @@ class Concert(object):
 
 
 if __name__ == '__main__':
-    try:
-        # with open('./config.json', 'r', encoding='utf-8') as f:
-        #     config = loads(f.read())
-            # params: 场次优先级，票价优先级，实名者序号, 用户昵称， 购买票数， 官网网址， 目标网址, 浏览器驱动地址
-        # con = Concert(config['date'], config['sess'], config['price'], config['real_name'], config['nick_name'], config['ticket_num'], config['damai_url'], config['target_url'], config['driver_path'])
-        con = Concert()
-        con.enter_concert() #进入到具体抢购页面
-    except Exception as e:
-        print(e)
-        exit(1)
+    # # try:
+    # with open('config.json', 'r', encoding='utf-8') as f:
+    #     print(f.read())
+    #     config = loads(f.read())
+    #         # params: 场次优先级，票价优先级，实名者序号, 用户昵称， 购买票数， 官网网址， 目标网址, 浏览器驱动地址
+    # con = Concert(config['date'], config['sess'], config['price'], config['real_name'], config['nick_name'], config['ticket_num'], config['damai_url'], config['target_url'], config['driver_path'])
+    con = Concert()
+    con.enter_concert() #进入到具体抢购页面
+
     while True:
         try:
             con.choose_ticket()
